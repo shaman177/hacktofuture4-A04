@@ -183,6 +183,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .ct-step.fail{background:var(--red-dim);color:var(--red)}
 .ct-label{color:var(--text2)}
 .ct-ts{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto}
+
+.storyboard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;height:100%;min-height:300px;overflow-y:auto;}
+.story-step{display:flex;gap:15px;margin-bottom:20px}
+.story-step:last-child{margin-bottom:0}
+.story-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--surface2);color:var(--text2);flex-shrink:0}
+.story-icon.detect{background:var(--amber-dim);color:var(--amber)}
+.story-icon.diagnose{background:var(--teal-dim);color:var(--teal)}
+.story-icon.remediate{background:var(--blue-dim);color:var(--blue)}
+.story-icon.validate{background:var(--purple-dim);color:var(--purple)}
+.story-content{flex:1}
+.story-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.story-desc{font-size:12px;color:var(--text2);line-height:1.5}
+.story-tool{display:inline-block;font-size:10px;font-family:'JetBrains Mono',monospace;background:var(--surface3);padding:3px 8px;border-radius:4px;margin-top:6px;color:var(--text3)}
 </style>
 </head>
 <body>
@@ -271,8 +284,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
       </div>
     </div>
 
-    <div class="card-title">📡 Agent Terminal Output</div>
-    <div class="terminal" id="terminal">Waiting for agent output...</div>
+    <div style="margin-bottom: 24px;">
+      <div class="card-title">📖 Autonomous Agent Live Feed (Storyboard & Terminal)</div>
+      <div class="storyboard" id="storyboard" style="min-height: 400px; padding: 24px;">
+        <div style="text-align:center;padding:1rem;color:var(--text3);margin-top:20px">Waiting for a healing workflow to start...</div>
+      </div>
+    </div>
   </div>
 
     <div class="tab-content" id="tab-chaos">
@@ -309,7 +326,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
       </div>
       <div style="display: flex; gap: 10px; margin-top:22px">
         <button class="btn btn-blue" id="random-chaos-btn" onclick="generateRandomScenario()">🎲 Random Scenario</button>
+        <button class="btn btn-amber" id="mass-chaos-btn" onclick="injectMassChaos()">🛰️ Spray Chaos (4x)</button>
+
         <button class="btn btn-red" id="chaos-btn" onclick="injectChaos()">⚡ Inject Fault</button>
+
       </div>
     </div>
 
@@ -407,7 +427,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 </div>
 
 <script>
-const BASE = 'http://localhost:8005';
+const BASE = 'http://127.0.0.1:8005';
+
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
@@ -430,7 +451,10 @@ function barColor(s) {
   return 'var(--amber)';
 }
 
+let lastSnap = null;
+
 function ts() { return new Date().toLocaleTimeString(); }
+
 
 function logToTerminal(id, msg, cls='line-info') {
   const el = document.getElementById(id);
@@ -505,10 +529,18 @@ function renderMetrics(snap, logs) {
 function renderServices(snap) {
   const grid = document.getElementById('services-grid');
   const svcs = snap?.snapshot?.services || [];
+  const promError = snap?.snapshot?.prometheus_error;
 
   if (!svcs.length) {
     const total = snap?.snapshot?.total_anomalous ?? null;
-    if (total === 0) {
+    if (promError) {
+      grid.innerHTML = `<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--amber);font-weight:600">
+        ⚠ Prometheus unreachable — backend is running but cannot query metrics.<br>
+        <span style="font-size:11px;font-weight:400;color:var(--text3);font-family:'JetBrains Mono',monospace;display:block;margin-top:8px">
+          Run: kubectl port-forward svc/kube-prom-kube-prometheus-prometheus 9090:9090 -n monitoring
+        </span>
+      </div>`;
+    } else if (total === 0) {
       grid.innerHTML = `<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--teal);font-weight:600">
         ✓ Cluster is healthy — zero anomalous services detected by Prometheus
       </div>`;
@@ -559,9 +591,10 @@ function renderHealLog(logs) {
 
 function renderAgentBars(logs) {
   const entries = logs?.entries || [];
-  const monitorRuns = entries.filter(e => e.stages?.monitor).length;
-  const healRuns    = entries.filter(e => e.stages?.heal).length;
-  const valRuns     = entries.filter(e => e.stages?.validation).length;
+  const monitorRuns = entries.filter(e => e.stages?.monitor && Object.keys(e.stages.monitor).length > 0).length;
+  const healRuns    = entries.filter(e => e.stages?.heal && Object.keys(e.stages.heal).length > 0).length;
+  const valRuns     = entries.filter(e => e.stages?.validation && Object.keys(e.stages.validation).length > 0).length;
+
   const total = Math.max(1, entries.length);
 
   const bars = [
@@ -582,9 +615,16 @@ async function fetchAll() {
   try {
     const [snap, logs] = await Promise.all([fetchStatus(), fetchLogs()]);
     setConn('ok', 'connected');
-    document.getElementById('last-updated').textContent = 'Updated ' + ts() + ' · Prometheus live data';
+    const promError = snap?.snapshot?.prometheus_error;
+    if (promError) {
+      document.getElementById('last-updated').textContent = 'Updated ' + ts() + ' · Backend OK · Prometheus unreachable (port 9090)';
+    } else {
+      document.getElementById('last-updated').textContent = 'Updated ' + ts() + ' · Prometheus live data';
+    }
     renderMetrics(snap, logs);
+    lastSnap = snap;
     renderServices(snap);
+
     renderHealLog(logs);
     renderAgentBars(logs);
     updateQuotaBar();
@@ -592,7 +632,7 @@ async function fetchAll() {
     setConn('off', 'offline');
     document.getElementById('last-updated').textContent = 'Backend offline — start main.py on port 8005';
     document.getElementById('services-grid').innerHTML = `<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--red)">
-      Cannot reach backend. Run: cd backend-agents &amp;&amp; python main.py
+      ✗ Backend unreachable — ensure main.py is running on port 8005
     </div>`;
   }
 }
@@ -601,32 +641,239 @@ async function fetchAll() {
 
 async function triggerHeal() {
   const btn = document.getElementById('heal-btn');
+  if (btn.disabled) return;
+  
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Running...';
-  logToTerminal('terminal', '[WORKFLOW START] Manual trigger from dashboard', 'line-agent');
 
   try {
-    const r = await fetch(`${BASE}/trigger/sync`, {
+    const r = await fetch(`${BASE}/trigger`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: 'dashboard manual trigger' }),
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.timeout(10000),
     });
-    const d = await r.json();
+    if (!r.ok) throw new Error('Backend error');
+    
+    // Auto-reset button after 5 seconds of silence if SSE hasn't finished yet
+    setTimeout(() => {
+      if (btn.disabled && btn.innerHTML.includes('Running')) {
+        btn.disabled = false;
+        btn.innerHTML = '▶ Trigger Heal';
+      }
+    }, 5000);
 
-    logToTerminal('terminal', `[STAGE 1] Monitor — anomalies_found: ${d.stages?.monitor?.anomalies_found ?? '?'}`, 'line-info');
-    if (d.stages?.heal) logToTerminal('terminal', `[STAGE 2] Heal — ${d.stages.heal.summary || JSON.stringify(d.stages.heal)}`, 'line-ok');
-    if (d.stages?.validation) logToTerminal('terminal', `[STAGE 3] Validate — ${d.stages.validation.summary || JSON.stringify(d.stages.validation)}`, 'line-ok');
-    logToTerminal('terminal', `[WORKFLOW END] outcome=${d.outcome} llm_calls=${d.llm_calls} duration=${d.duration_s}s`, 'line-ok');
-
-    btn.innerHTML = '✓ Done';
-    setTimeout(() => { btn.disabled = false; btn.innerHTML = '▶ Trigger Heal'; fetchAll(); }, 2500);
   } catch (e) {
-    logToTerminal('terminal', '[ERROR] ' + e.message, 'line-err');
     btn.innerHTML = '✗ Error';
     setTimeout(() => { btn.disabled = false; btn.innerHTML = '▶ Trigger Heal'; }, 2500);
   }
 }
+
+
+function appendStoryboardStep(event) {
+  const sb = document.getElementById('storyboard');
+  if (!sb) return;
+
+  if (sb.innerHTML.includes('Waiting for a healing workflow')) sb.innerHTML = '';
+
+  let html = '';
+
+  if (event.type === 'workflow_start') {
+    sb.innerHTML = '';
+    html = `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3);margin-bottom:15px">[${ts()}] <span style="color:var(--blue)">${event.message}</span></div>`;
+  } else if (event.type === 'stage') {
+    html = `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--purple);margin-bottom:15px;padding-left:12px;border-left:2px solid var(--purple-dim)">[${ts()}] ${event.message}</div>`;
+  } else if (event.type === 'workflow_end') {
+    const d = event.data || {};
+    html = `<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);margin-top:15px;padding-top:15px;border-top:1px solid var(--border)">[${ts()}] [WORKFLOW COMPLETE] outcome=${d.outcome || 'unknown'} | duration=${d.duration_s || 0}s</div>`;
+    
+    setTimeout(() => {
+      const hb = document.getElementById('heal-btn');
+      if (hb) { hb.disabled = false; hb.innerHTML = '▶ Trigger Heal'; }
+      const cb = document.getElementById('chaos-btn');
+      if (cb) { cb.disabled = false; cb.innerHTML = '⚡ Inject Fault'; }
+      fetchAll();
+    }, 1000);
+
+  } else if (event.type === 'error') {
+    html = `
+      <div class="story-step" style="margin-top:10px; margin-bottom: 20px;">
+        <div class="story-icon" style="background:var(--red-dim);color:var(--red)">🚨</div>
+        <div class="story-content">
+          <div class="story-title" style="color:var(--red)">Workflow Error</div>
+          <div class="story-desc" style="color:var(--text2)">${event.message}</div>
+          <div class="story-tool">System Exception</div>
+        </div>
+      </div>`;
+    setTimeout(() => {
+      const hb = document.getElementById('heal-btn');
+      if (hb) { hb.disabled = false; hb.innerHTML = '▶ Trigger Heal'; }
+      const cb = document.getElementById('chaos-btn');
+      if (cb) { cb.disabled = false; cb.innerHTML = '⚡ Inject Fault'; }
+    }, 1000);
+  } else if (event.type === 'monitor_done') {
+    const m = event.data;
+    if (!m.anomalies_found) {
+      html = `
+        <div class="story-step" style="margin-bottom: 20px;">
+          <div class="story-icon validate">✓</div>
+          <div class="story-content">
+            <div class="story-title">Cluster is Healthy</div>
+            <div class="story-desc">The Monitor Agent ran a routine scan via Prometheus and found no anomalies across any services.</div>
+            <div class="story-tool">Tools used: prom_get_anomalies</div>
+          </div>
+        </div>`;
+    } else {
+      const svc = m.services && m.services[0] ? m.services[0] : null;
+      if (svc) {
+        html = `
+          <div class="story-step" style="margin-bottom: 20px;">
+            <div class="story-icon detect">👀</div>
+            <div class="story-content">
+              <div class="story-title">Issue Detected</div>
+              <div class="story-desc">The <b>${svc.service}</b> service is experiencing a ${svc.severity} issue (Error Rate: ${svc.error_rate_pct}%).</div>
+              <div class="story-tool">Tools used: prom_get_anomalies, prom_get_metrics</div>
+            </div>
+          </div>
+          <div class="story-step" style="margin-bottom: 20px;">
+            <div class="story-icon diagnose">🧠</div>
+            <div class="story-content">
+              <div class="story-title">Root Cause Diagnosed</div>
+              <div class="story-desc">Analyzed recent application logs and identified: <i>"${svc.likely_cause}"</i>. Recommended action is to ${svc.recommended_action}.</div>
+              <div class="story-tool">Tools used: loki_get_crash_logs</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+  } else if (event.type === 'heal_done') {
+    const h = event.data;
+    const rem = h.remediations && h.remediations[0] ? h.remediations[0] : null;
+    if (rem) {
+      html = `
+        <div class="story-step" style="margin-bottom: 20px;">
+          <div class="story-icon remediate">🛠️</div>
+          <div class="story-content">
+            <div class="story-title">Autonomous Remediation Applied</div>
+            <div class="story-desc">The Heal Agent successfully executed a <b>${rem.action_taken}</b> action. Description: ${rem.action_detail}.</div>
+            <div class="story-tool">Tools used: argocd_rollback / argocd_sync</div>
+          </div>
+        </div>
+      `;
+    }
+  } else if (event.type === 'validation_done') {
+    const v = event.data;
+    const val = v.validations && v.validations[0] ? v.validations[0] : null;
+    if (val) {
+      const isFailed = val.verdict === 'FAIL';
+      const iconClass = isFailed ? 'detect' : 'validate';
+      const iconObj = isFailed ? '❌' : '🛡️';
+
+      html = `
+        <div class="story-step" style="margin-bottom: 20px;">
+          <div class="story-icon ${iconClass}">${iconObj}</div>
+          <div class="story-content">
+            <div class="story-title">Validation Complete: ${val.verdict}</div>
+            <div class="story-desc">${isFailed ? 'The system failed the resiliency test and manual escalation is required.' : 'A LitmusChaos Pod-Delete experiment was injected to assure the fix works.'} Resiliency score: ${val.resiliency_score}/100.</div>
+            <div class="story-tool">Tools used: litmus_run</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // ─── chaos_injected: show the fault injection as the first storyboard card ──
+  if (event.type === 'chaos_injected') {
+    const d = event.data || {};
+    const ktErr = d.kubectl_result || '';
+    const errHtml = ktErr
+      ? `<div class="story-tool" style="color:var(--amber);background:rgba(245,158,11,0.08);margin-top:6px;white-space:pre-wrap;word-break:break-all">${ktErr.substring(0, 280)}${ktErr.length > 280 ? '…' : ''}</div>`
+      : '';
+    html = `
+      <div class="story-step" style="margin-bottom:20px;">
+        <div class="story-icon detect" style="font-size:18px">⚡</div>
+        <div class="story-content">
+          <div class="story-title" style="color:var(--amber)">Chaos Fault Injected</div>
+          <div class="story-desc">Injected a <b>${d.chaos_type || 'unknown'}</b> fault targeting <b>${d.target_app || '?'}</b> in namespace <b>${d.target_namespace || '?'}</b>. run_id: <code>${d.run_id || 'N/A'}</code></div>
+          ${errHtml}
+          <div class="story-tool">Fault type: ${d.chaos_type} — Autonomous healing workflow triggered</div>
+        </div>
+      </div>`;
+    sb.innerHTML = ''; // Fresh storyboard for this scenario
+  }
+
+  // ─── chaos_skipped: show safety gate block ─────────────────────────────────
+  if (event.type === 'chaos_skipped') {
+    const d = event.data || {};
+    html = `
+      <div class="story-step" style="margin-bottom:20px;">
+        <div class="story-icon" style="background:var(--amber-dim);color:var(--amber);font-size:18px">🛡️</div>
+        <div class="story-content">
+          <div class="story-title" style="color:var(--amber)">Chaos Blocked by Safety Gate</div>
+          <div class="story-desc">${d.safety_check?.reason || 'Safety gate blocked the experiment.'}</div>
+          <div class="story-tool">No pods were affected. Edit LITMUS_ALLOWED_NAMESPACES in .env to permit this namespace.</div>
+        </div>
+      </div>`;
+  }
+
+  if (html) {
+    if (event.type !== 'workflow_start' && event.type !== 'chaos_injected' && sb.innerHTML.includes('Waiting for a healing workflow')) {
+      sb.innerHTML = '';
+    }
+    sb.innerHTML += html;
+    sb.scrollTop = sb.scrollHeight;
+    showTab('overview');
+  }
+
+  // Mirror ALL events to chaos-terminal for the full journey log
+  const chaosTermEl = document.getElementById('chaos-terminal');
+  if (chaosTermEl) {
+    const clsMap = {
+      workflow_start: 'line-agent', stage: 'line-info', monitor_done: 'line-ok',
+      heal_done: 'line-ok', validation_done: 'line-ok', workflow_end: 'line-ok',
+      error: 'line-err', chaos_injected: 'line-warn', chaos_skipped: 'line-warn',
+    };
+    logToTerminal('chaos-terminal', event.message, clsMap[event.type] || 'line-info');
+    // Sub-lines for anomalous services
+    if (event.type === 'monitor_done' && event.data?.services?.length) {
+      event.data.services.forEach(svc => {
+        logToTerminal('chaos-terminal',
+          `  ↳ ${svc.service} [${svc.severity}] err=${svc.error_rate_pct}% | ${svc.likely_cause} → ${svc.recommended_action}`,
+          svc.severity === 'CRITICAL' ? 'line-err' : 'line-warn');
+      });
+    }
+    // Sub-lines for remediations
+    if (event.type === 'heal_done' && event.data?.remediations?.length) {
+      event.data.remediations.forEach(r => {
+        logToTerminal('chaos-terminal',
+          `  ↳ ${r.service}: ${r.action_taken} (${r.action_detail || '…'}) success=${r.success} conf=${r.confidence}`,
+          r.success ? 'line-ok' : 'line-err');
+      });
+    }
+    // Sub-lines for validations
+    if (event.type === 'validation_done' && event.data?.validations?.length) {
+      event.data.validations.forEach(v => {
+        logToTerminal('chaos-terminal',
+          `  ↳ ${v.service}: ${v.verdict} score=${v.resiliency_score}/100`,
+          v.verdict === 'PASS' || v.verdict === 'SKIPPED' ? 'line-ok' : 'line-err');
+      });
+    }
+    // Update chaos timeline steps based on agent events
+    if (event.type === 'monitor_done')  { updateTimelineStep(3, event.data?.anomalies_found ? 'run' : 'done'); }
+    if (event.type === 'heal_done')     { updateTimelineStep(3, 'done'); updateTimelineStep(4, 'done'); }
+    if (event.type === 'validation_done') { updateTimelineStep(5, event.data?.overall_status === 'ALL_FAIL' ? 'fail' : 'done'); }
+    if (event.type === 'workflow_end')  {
+      [3,4,5].forEach(s => updateTimelineStep(s, event.data?.outcome === 'error' ? 'fail' : 'done'));
+    }
+    if (event.type === 'error')         { [3,4,5].forEach(s => updateTimelineStep(s, 'fail')); }
+  }
+}
+
+let eventSource = null;
+function connectEventStream() {
+  // Replaced by unified connectEventStream below — stub kept for DOMContentLoaded
+}
+
 
 // ─── Chaos & Heal ────────────────────────────────────────────────────────────
 
@@ -672,7 +919,77 @@ function updateTimelineStep(step, state) {
   if (el) el.querySelector('.ct-step').className = 'ct-step ' + state;
 }
 
+async function injectMassChaos() {
+  const btn = document.getElementById('mass-chaos-btn');
+  const statusBox = document.getElementById('chaos-status-box');
+  const term = document.getElementById('chaos-terminal');
+  const ns = document.getElementById('chaos-ns').value.trim() || 'staging';
+
+  if (!lastSnap || !lastSnap.snapshot || !lastSnap.snapshot.services) {
+    alert("Please wait for the dashboard to fetch services first!");
+    return;
+  }
+
+  // Pick 4 services for a "cocktail" of errors
+  const allSvcs = lastSnap.snapshot.services;
+  const targetSvcs = allSvcs
+    .sort(() => 0.5 - Math.random())
+    .slice(0, 4);
+
+  const mildTypes = ['latency-spike', 'cpu-throttle', 'memory-leak', 'pod-delete'];
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Spraying...';
+  term.innerHTML = '';
+  document.getElementById('chaos-timeline').innerHTML = '';
+  
+  logToTerminal('chaos-terminal', `🛰️ [MILD MASS CHAOS] Injecting performance cocktail into ${targetSvcs.length} services...`, 'line-agent');
+  statusBox.textContent = 'Intelligent Chaos Injection in progress...';
+  
+  addTimelineStep(1, 'Safety checks (Mass Mode)', 'run', ts());
+  addTimelineStep(2, `Launching multi-fault cocktail...`, 'wait', '');
+  addTimelineStep(3, 'Agent detecting Degraded vs Critical states', 'wait', '');
+
+  try {
+    for (const svc of targetSvcs) {
+      const type = mildTypes[Math.floor(Math.random() * mildTypes.length)];
+      logToTerminal('chaos-terminal', `→ [${type.toUpperCase()}] → ${svc.service}`, 'line-info');
+      
+      await fetch(`${BASE}/chaos/inject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          experiment_name: `cocktail-${svc.service}`, 
+          target_namespace: ns, 
+          target_app: svc.service, 
+          chaos_type: type 
+        }),
+      });
+    }
+
+    updateTimelineStep(1, 'done');
+    updateTimelineStep(2, 'done');
+    updateTimelineStep(3, 'run');
+    
+    logToTerminal('chaos-terminal', 'Triggering healing for Intelligent Deletion patterns...', 'line-agent');
+
+    await fetch(`${BASE}/trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: `intelligent-mass-chaos: cocktail-4x` }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    statusBox.innerHTML = `Cocktail Injected! Watch for <b>Amber/Degraded</b> services in the grid.`;
+  } catch (e) {
+    logToTerminal('chaos-terminal', '[ERROR] ' + e.message, 'line-err');
+  }
+  setTimeout(() => { btn.disabled = false; btn.innerHTML = '🛰️ Spray Chaos (4x)'; }, 5000);
+}
+
+
 async function injectChaos() {
+
   const btn = document.getElementById('chaos-btn');
   const ns   = document.getElementById('chaos-ns').value.trim() || 'staging';
   const app  = document.getElementById('chaos-app').value.trim() || 'frontend';
@@ -720,38 +1037,14 @@ async function injectChaos() {
     logToTerminal('chaos-terminal', 'Triggering healing workflow — agents scanning cluster...', 'line-agent');
     updateTimelineStep(3, 'run');
 
-    const healResp = await fetch(`${BASE}/trigger/sync`, {
+    await fetch(`${BASE}/trigger`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: `post-chaos-heal: ${name}` }),
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.timeout(10000),
     });
-    const heal = await healResp.json();
 
-    updateTimelineStep(3, heal.stages?.monitor?.anomalies_found ? 'done' : 'done');
-    logToTerminal('chaos-terminal', `[MONITOR] anomalies_found=${heal.stages?.monitor?.anomalies_found ?? false}`, 'line-info');
-    logToTerminal('chaos-terminal', `[MONITOR] ${heal.stages?.monitor?.summary || JSON.stringify(heal.stages?.monitor)}`, 'line-info');
-
-    if (heal.stages?.heal) {
-      updateTimelineStep(4, 'done');
-      logToTerminal('chaos-terminal', `[HEAL] ${heal.stages.heal.summary || JSON.stringify(heal.stages.heal)}`, 'line-ok');
-    } else {
-      updateTimelineStep(4, heal.outcome === 'healthy' ? 'done' : 'fail');
-    }
-
-    if (heal.stages?.validation) {
-      updateTimelineStep(5, 'done');
-      logToTerminal('chaos-terminal', `[VALIDATE] ${heal.stages.validation.summary || JSON.stringify(heal.stages.validation)}`, 'line-ok');
-    } else {
-      updateTimelineStep(5, heal.outcome === 'healthy' ? 'done' : 'fail');
-    }
-
-    logToTerminal('chaos-terminal', `[WORKFLOW END] outcome=${heal.outcome} llm_calls=${heal.llm_calls} duration=${heal.duration_s}s`, 
-      heal.outcome === 'healthy' ? 'line-ok' : heal.outcome === 'error' ? 'line-err' : 'line-warn');
-
-    statusBox.textContent = `Workflow complete — outcome: ${heal.outcome} | LLM calls: ${heal.llm_calls} | Duration: ${heal.duration_s}s`;
-    btn.innerHTML = '✓ Done';
-    fetchAll();
+    statusBox.innerHTML = `Chaos injected! Generating autonomous healing response...<br><span style="color:var(--text3)">Check the <b>Overview</b> tab's Storyboard.</span>`;
   } catch (e) {
     logToTerminal('chaos-terminal', '[ERROR] ' + e.message, 'line-err');
     statusBox.textContent = 'Error: ' + e.message;
@@ -794,6 +1087,7 @@ function setPromQL(q) {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('promql-input').addEventListener('keydown', e => { if (e.key === 'Enter') runPromQL(); });
+  connectEventStream();
 });
 
 // ─── Ask Agents ──────────────────────────────────────────────────────────────
@@ -879,12 +1173,39 @@ async function updateQuotaBar() {
   } catch (_) {}
 }
 
-// ─── Boot ────────────────────────────────────────────────────────────────────
+// ─── Unified SSE Event Stream ─────────────────────────────────────────────────
+
+let _sseConnected = false;
+
+function connectEventStream() {
+  if (_sseConnected) return;
+  try {
+    const es = new EventSource(`${BASE}/stream/events`);
+    _sseConnected = true;
+
+    es.onmessage = (evt) => {
+      try {
+        const event = JSON.parse(evt.data);
+        if (!event.type || event.type === 'connected') return;
+        appendStoryboardStep(event);
+      } catch(_) {}
+    };
+
+    es.onerror = () => {
+      _sseConnected = false;
+      setTimeout(connectEventStream, 5000);
+    };
+  } catch(_) {
+    setTimeout(connectEventStream, 5000);
+  }
+}
 
 fetchAll();
 fetchQuota();
 setInterval(fetchAll, 30000);
 setInterval(fetchQuota, 15000);
+connectEventStream();
+
 </script>
 </body>
 </html>

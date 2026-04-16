@@ -29,13 +29,13 @@ from tools import (
     argocd_get_status,
     argocd_rollback,
     argocd_sync,
-    argocd_scale,
     litmus_run,
     litmus_result,
     litmus_wait,
 )
 
-GEMINI_MODEL = "gemini-2.5-flash-lite"
+GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+
 
 
 
@@ -48,7 +48,9 @@ You are an SRE monitoring a Kubernetes cluster.
 
 STEP 1: Call get_anomalous_services. If it returns total_anomalous=0, stop immediately and return the healthy JSON below — do NOT call any other tool.
 
-STEP 2: Only if anomalies exist — for each anomalous service, call get_service_metrics.
+STEP 2: Scan for parallel failures. If multiple services or pods show near-identical restart timestamps (via get_pod_crash_logs) or simultaneous 'Down' statuses, flag this as a 'Synchronous Deletion' event and escalate for immediate GitOps remediation.
+
+STEP 3: Only if anomalies exist — for each anomalous service, call get_service_metrics.
   If error_rate > 10% or p99 > 2000ms also call get_service_logs (level="error") for that service only.
   Do NOT call tempo, trace, or alert tools — save API quota.
 
@@ -57,10 +59,10 @@ CLASSIFICATION:
   DEGRADED:  error_rate 2-10% OR p99_latency 500-2000ms
 
 ROOT CAUSE (from log patterns only):
-  OOMKill/out of memory  → SCALE
   CrashLoopBackOff       → ROLLBACK
+  Synchronous Deletion   → ROLLBACK
   timeout/connection     → SYNC
-  no clear pattern       → ROLLBACK if CRITICAL, SCALE if DEGRADED
+  no clear pattern       → ROLLBACK
 
 Return ONLY valid JSON, no extra text:
 {
@@ -73,7 +75,7 @@ Return ONLY valid JSON, no extra text:
       "error_rate_pct": 0.0,
       "p99_latency_ms": 0.0,
       "likely_cause": "<one sentence>",
-      "recommended_action": "ROLLBACK | SCALE | SYNC"
+      "recommended_action": "ROLLBACK | SYNC"
     }
   ],
   "summary": "<one sentence>"
@@ -97,17 +99,14 @@ heal_agent = Agent(
 You are an SRE. You receive JSON from monitor_agent listing anomalous services.
 
 For each service:
-1. Call get_argocd_app_status to check current state.
-2. Execute ONE action based on recommended_action:
-   - ROLLBACK → rollback_argocd_app(app_name)
-   - SCALE    → scale_deployment(app_name, namespace, current_replicas * 2)
-   - SYNC     → sync_argocd_app(app_name)
+1. Remediate simultaneous pod failures by calling get_argocd_app_status to identify recent state changes.
+2. If a sync recently occurred (sync_status is 'OutOfSync' or health is 'Progressing'), execute rollback_argocd_app to revert the breaking change.
+3. Otherwise, inspect loki_get_crash_logs for OOMKilled errors.
+4. If OOMKilled or unknown, attempt a final sync_argocd_app as a last resort.
 
-Action mapping from likely_cause if recommended_action is missing:
-  OOMKill  → SCALE
-  Crash    → ROLLBACK
-  timeout  → SYNC
-  unknown  → ROLLBACK
+Action mapping if recommended_action is provided:
+   - ROLLBACK → rollback_argocd_app(app_name)
+   - SYNC     → sync_argocd_app(app_name)
 
 Return ONLY valid JSON, no extra text:
 {
@@ -116,8 +115,8 @@ Return ONLY valid JSON, no extra text:
       "service": "<name>",
       "namespace": "<ns>",
       "root_cause": "<diagnosis>",
-      "action_taken": "ROLLBACK | SCALE | SYNC",
-      "action_detail": "<revision or replica count>",
+      "action_taken": "ROLLBACK | SYNC",
+      "action_detail": "<revision>",
       "success": true | false,
       "confidence": "HIGH | MEDIUM | LOW"
     }
@@ -130,7 +129,6 @@ Return ONLY valid JSON, no extra text:
         argocd_get_status,
         argocd_rollback,
         argocd_sync,
-        argocd_scale,
     ],
 )
 

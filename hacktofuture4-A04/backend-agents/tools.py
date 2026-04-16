@@ -204,11 +204,14 @@ def get_anomalous_services(minutes: int = 10) -> dict[str, Any]:
             }
             for r in raw
         ]
-    except Exception:
-        anomalous = [{
-            "service": "frontend",
-            "error_rate_pct": 14.5,
-        }]
+    except Exception as exc:
+        # Prometheus is unreachable — return healthy so we don't trigger bogus heals
+        return {
+            "total_anomalous": 0,
+            "services":        [],
+            "source":          "prometheus",
+            "prometheus_error": str(exc),
+        }
 
     return {
         "total_anomalous": len(anomalous),
@@ -1007,7 +1010,6 @@ def wait_for_chaos_result(run_id: str, timeout_seconds: int = 120) -> dict[str, 
     }
 
 
-
 prom_get_metrics       = FunctionTool(get_service_metrics)
 prom_get_anomalies     = FunctionTool(get_anomalous_services)
 prom_get_alerts        = FunctionTool(get_prometheus_alert_rules)
@@ -1030,3 +1032,4 @@ argocd_scale           = FunctionTool(scale_deployment)
 litmus_run             = FunctionTool(run_chaos_experiment)
 litmus_result          = FunctionTool(get_chaos_result)
 litmus_wait            = FunctionTool(wait_for_chaos_result)
+
