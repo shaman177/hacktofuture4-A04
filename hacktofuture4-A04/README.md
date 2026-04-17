@@ -1,93 +1,86 @@
-# 🌌 Antigravity: Self-Healing Cloud AI
-### 🚀 Team: INVOX | HackToFuture 4
+# Antigravity: Autonomous Self-Healing Cloud AI
+### Team INVOX | HackToFuture 4
 
-[![Gemini](https://img.shields.io/badge/Powered%20By-Gemini%203.1%20Flash--Lite-blue?style=for-the-badge&logo=google-gemini)](https://deepmind.google/technologies/gemini/)
-[![Kubernetes](https://img.shields.io/badge/Tech-Kubernetes-blue?style=for-the-badge&logo=kubernetes)](https://kubernetes.io/)
-[![ArgoCD](https://img.shields.io/badge/Ops-ArgoCD-orange?style=for-the-badge&logo=argo)](https://argoproj.github.io/cd/)
-
----
-
-## ⚡ Problem Statement
-In modern cloud architectures, **downtime is expensive.** Standard Site Reliability Engineering (SRE) relies on human intervention to diagnose and fix cluster failures, leading to a high **Mean Time To Recovery (MTTR)**. 
-
-Specifically, subtle performance degradations (mild errors) and simultaneous parallel failures (Synchronous Deletions) are notoriously difficult for traditional monitoring tools to resolve without human experts.
-
-## 🧠 The Solution
-**Antigravity** is an autonomous agentic system powered by **Gemini 3.1 Flash-Lite** that acts as a 24/7 AI-SRE. 
-
-It implements a circular "Autonomous Pulse" loop that consistently Monitors, Heals, and Validates your cluster health without human input:
-1. **Monitor (Detection)**: Scans Prometheus metrics and Loki logs to identify anomalies (CrashLoops, Latency Spikes, Sync Errors).
-2. **Heal (Remediation)**: Intelligent agents analyze root causes and execute automated **ArgoCD Rollbacks** or **Syncs**.
-3. **Validate (Verification)**: Uses **LitmusChaos** to stress-test the fix, ensuring the system is truly resilient and not just temporarily patched.
+[![Gemini](https://img.shields.io/badge/Powered%20By-Gemini%203.1%20Flash--Lite-blue?style=flat-square&logo=google-gemini)](https://deepmind.google/technologies/gemini/)
+[![Kubernetes](https://img.shields.io/badge/Infrastructure-Kubernetes-326ce5?style=flat-square&logo=kubernetes)](https://kubernetes.io/)
+[![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-ef7b4d?style=flat-square&logo=argo)](https://argoproj.github.io/cd/)
 
 ---
 
-## ✨ Core Features
-- **Intelligent Mass Chaos (4x)**: A "Spray Chaos" engine that injects realistic "Mild Error Cocktails" (Latency, CPU throttling, Memory leaks) across multiple services simultaneously.
-- **Parallel Failure Logic**: Sophisticated agent instructions for detecting "Synchronous Deletions"—mass failures caused by bad GitOps deployments.
-- **Real-Time Storyboard**: A premium glassmorphism dashboard that visualizes the "internal brain" of the agents as they diagnose and repair the cluster.
-- **Zero API Inflation**: Highly optimized agent loops that process multiple complex failures in a single LLM turn to save API quota.
+## Problem Statement
+In modern cloud-native environments, **downtime directly impacts revenue.** Traditional Site Reliability Engineering (SRE) workflows rely heavily on manual intervention to diagnose complex failures, resulting in elevated **Mean Time To Recovery (MTTR)**. 
+
+Subtle performance degradations ("Gray Failures") and large-scale parallel failures (Synchronous Deletions) often escape standard threshold-based alerting, requiring human experts to sift through logs and metrics to identify the root cause.
+
+## Proposed Solution
+**Antigravity** is an autonomous agentic framework powered by **Gemini 3.1 Flash-Lite** that serves as a 24/7 AI-driven SRE. 
+
+The system implements a continuous "Autonomous Pulse" loop designed to **Monitor, Heal, and Validate** cluster health without human intervention:
+1. **Monitor**: Probabilistic scanning of Prometheus metrics and Loki logs to detect anomalies such as CrashLoops, Latency Spikes, and Sync Errors.
+2. **Heal**: Agentic reasoning models analyze diagnostic data to execute automated **ArgoCD Rollbacks** or configuration **Syncs** based on real-time root-cause analysis.
+3. **Validate**: Integration with **LitmusChaos** to perform post-remediation stress tests, verifying that the system has returned to a resilient steady-state.
 
 ---
 
-## 🛠️ Tech Stack
-| Component | Technology |
+## Core Features
+*   **Intelligent Mass Chaos (4x)**: A specialized engine that simulates complex multi-service failures (Latency, CPU throttling, and Memory leaks) to demonstrate the agent's parallel diagnostic capabilities.
+*   **Parallel Failure Logic**: Advanced reasoning patterns for identifying "Synchronous Deletions"—mass failures typical of incorrect GitOps deployments or platform-wide outages.
+*   **Agent Storyboard**: A high-fidelity dashboard visualizing the "internal chain-of-thought" of the agents as they navigate the detection-to-healing journey.
+*   **Quota Optimization**: Highly efficient prompt engineering that batches multi-service diagnostics into single LLM turns, strictly adhering to API rate limits.
+
+---
+
+## Tech Stack
+| Layer | Technology |
 | :--- | :--- |
-| **Brain** | Gemini 3.1 Flash-Lite (Google ADK) |
-| **Observability** | Prometheus, Loki (Logs), Tempo (Traces), Grafana |
-| **GitOps** | ArgoCD |
-| **Chaos Eng.** | LitmusChaos |
-| **Backend** | Python (FastAPI) |
-| **Frontend** | Vanilla JS / CSS (Modern Glassmorphism) |
+| **Artificial Intelligence** | Gemini 3.1 Flash-Lite (Google ADK) |
+| **Observability** | Prometheus, Loki, Tempo, Grafana |
+| **Continuous Delivery** | ArgoCD (GitOps) |
+| **Resilience Testing** | LitmusChaos |
+| **Backend** | Fast API (Python) |
+| **Frontend** | Modern Vanilla JS / CSS |
 
 ---
 
-## ⚡ One-Click Execution (Windows)
-We provide a convenience script to launch the full environment (Backend, Frontend, and Kubernetes Port-Forwards) in secondary terminal windows:
-1. Run **`START_ALL.bat`** from the root directory.
-2. The dashboard will automatically open at `http://localhost:3000`.
+## Project Setup Instructions
 
----
+### 1. Prerequisites
+*   **Python 3.10+**
+*   **Kubernetes Cluster** with Prometheus, ArgoCD, and LitmusChaos installed.
+*   **Gemini API Key**: Required for autonomous reasoning.
 
-## 🛠️ How To Run (Step-by-Step)
-
-### 🔹 1. Prerequisites
-- **Python 3.10+**
-- **Kubernetes Cluster** (local/remote) with Prometheus, ArgoCD, and LitmusChaos installed.
-- **API Key**: A valid Gemini API Key.
-
-### 🔹 2. Backend Setup
-1. Open the `/backend-agents` directory.
-2. Create a `.env` file from the template and add your API key:
+### 2. Backend Installation
+1. Navigate to the `backend-agents` directory.
+2. Configure your environment in a `.env` file:
    ```env
-   GOOGLE_API_KEY=your_key_here
-   ARGOCD_TOKEN=your_token_here
+   GOOGLE_API_KEY=your_gemini_key
+   ARGOCD_TOKEN=your_argocd_token
    PROMETHEUS_URL=http://localhost:9090
    ```
-3. Install dependencies:
+3. Install the required dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-4. Start the backend:
+4. Start the server:
    ```bash
    python main.py
    ```
 
-### 🔹 3. Frontend Setup
-1. Open the `/frontend` directory.
-2. Start a local server:
+### 3. Frontend Installation
+1. Navigate to the `frontend` directory.
+2. Launch a local web server:
    ```bash
    python -m http.server 3000
    ```
-3. Access the dashboard at **`http://localhost:3000`**.
+3. Open the dashboard at `http://localhost:3000`.
 
 ---
 
-## 📸 Dashboard Preview
+## Dashboard Preview
 
 ![Dashboard Overview](https://raw.githubusercontent.com/shaman177/hacktofuture4-A04/main/visuals/dashboard_demo.png)
 
-> **Note**: For the full "Mass Chaos" demo, navigate to the **Chaos & Heal** tab and click **🛰️ Spray Chaos (4x)**.
+> **Deployment Note**: For a full system demonstration, use the **Spray Chaos (4x)** button in the Chaos Management tab to observe the parallel remediation workflow.
 
 ---
-**TEAM INVOX** | Built for HackToFuture 4
+**TEAM INVOX** | HackToFuture 4
