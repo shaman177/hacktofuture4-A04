@@ -299,8 +299,12 @@ async def healing_workflow(trigger: str = "manual") -> dict[str, Any]:
         heal_data = _parse_json(heal_raw)
 
         # Attach chaos context to heal data for storyboard
-        if active_fault:
-            heal_data["chaos_fault"] = active_fault
+        if active_faults:
+            # For backward compat in storyboard UI, use first fault if only one, 
+            # or a summary object if multiple.
+            heal_data["active_faults"] = active_faults
+            heal_data["chaos_fault"] = active_faults[0]
+
 
         audit["stages"]["heal"] = heal_data
         log.info(f"[STAGE 2 DONE] remediations={len(heal_data.get('remediations', []))}")
