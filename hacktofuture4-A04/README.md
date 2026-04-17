@@ -1,86 +1,171 @@
-# Antigravity: Autonomous Self-Healing Cloud AI
-### Team INVOX | HackToFuture 4
+# 🚀 Self-Healing Cloud (Agentic AI for Kubernetes)
 
-[![Gemini](https://img.shields.io/badge/Powered%20By-Gemini%203.1%20Flash--Lite-blue?style=flat-square&logo=google-gemini)](https://deepmind.google/technologies/gemini/)
-[![Kubernetes](https://img.shields.io/badge/Infrastructure-Kubernetes-326ce5?style=flat-square&logo=kubernetes)](https://kubernetes.io/)
-[![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-ef7b4d?style=flat-square&logo=argo)](https://argoproj.github.io/cd/)
+## 👥 Team Name
 
----
-
-## Problem Statement
-In modern cloud-native environments, **downtime directly impacts revenue.** Traditional Site Reliability Engineering (SRE) workflows rely heavily on manual intervention to diagnose complex failures, resulting in elevated **Mean Time To Recovery (MTTR)**. 
-
-Subtle performance degradations ("Gray Failures") and large-scale parallel failures (Synchronous Deletions) often escape standard threshold-based alerting, requiring human experts to sift through logs and metrics to identify the root cause.
-
-## Proposed Solution
-**Antigravity** is an autonomous agentic framework powered by **Gemini 3.1 Flash-Lite** that serves as a 24/7 AI-driven SRE. 
-
-The system implements a continuous "Autonomous Pulse" loop designed to **Monitor, Heal, and Validate** cluster health without human intervention:
-1. **Monitor**: Probabilistic scanning of Prometheus metrics and Loki logs to detect anomalies such as CrashLoops, Latency Spikes, and Sync Errors.
-2. **Heal**: Agentic reasoning models analyze diagnostic data to execute automated **ArgoCD Rollbacks** or configuration **Syncs** based on real-time root-cause analysis.
-3. **Validate**: Integration with **LitmusChaos** to perform post-remediation stress tests, verifying that the system has returned to a resilient steady-state.
+HackToFuture4.0 – Team <INVOX>
 
 ---
 
-## Core Features
-*   **Intelligent Mass Chaos (4x)**: A specialized engine that simulates complex multi-service failures (Latency, CPU throttling, and Memory leaks) to demonstrate the agent's parallel diagnostic capabilities.
-*   **Parallel Failure Logic**: Advanced reasoning patterns for identifying "Synchronous Deletions"—mass failures typical of incorrect GitOps deployments or platform-wide outages.
-*   **Agent Storyboard**: A high-fidelity dashboard visualizing the "internal chain-of-thought" of the agents as they navigate the detection-to-healing journey.
-*   **Quota Optimization**: Highly efficient prompt engineering that batches multi-service diagnostics into single LLM turns, strictly adhering to API rate limits.
+## 🧠 Problem Statement
+
+Managing Kubernetes systems is complex and reactive.
+When failures occur (crashes, latency spikes, errors), engineers must manually:
+
+* Monitor metrics
+* Identify root causes
+* Apply fixes
+* Validate system stability
+
+This process is slow, error-prone, and not scalable.
 
 ---
 
-## Tech Stack
-| Layer | Technology |
-| :--- | :--- |
-| **Artificial Intelligence** | Gemini 3.1 Flash-Lite (Google ADK) |
-| **Observability** | Prometheus, Loki, Tempo, Grafana |
-| **Continuous Delivery** | ArgoCD (GitOps) |
-| **Resilience Testing** | LitmusChaos |
-| **Backend** | Fast API (Python) |
-| **Frontend** | Modern Vanilla JS / CSS |
+## 💡 Our Solution
+
+We built a **Self-Healing Cloud System** powered by **Agentic AI** that can:
+
+👉 Detect issues
+👉 Automatically fix them
+👉 Validate system stability
+
+All without human intervention.
+
+The system uses a **3-agent architecture**:
+
+1. **Monitor Agent** → Detects anomalies using Prometheus
+2. **Heal Agent** → Fixes issues using ArgoCD
+3. **Validation Agent** → Tests resilience using LitmusChaos
+
+This creates a fully automated **Monitor → Heal → Validate** pipeline.
 
 ---
 
-## Project Setup Instructions
+## 🧠 Architecture Overview
 
-### 1. Prerequisites
-*   **Python 3.10+**
-*   **Kubernetes Cluster** with Prometheus, ArgoCD, and LitmusChaos installed.
-*   **Gemini API Key**: Required for autonomous reasoning.
-
-### 2. Backend Installation
-1. Navigate to the `backend-agents` directory.
-2. Configure your environment in a `.env` file:
-   ```env
-   GOOGLE_API_KEY=your_gemini_key
-   ARGOCD_TOKEN=your_argocd_token
-   PROMETHEUS_URL=http://localhost:9090
-   ```
-3. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Start the server:
-   ```bash
-   python main.py
-   ```
-
-### 3. Frontend Installation
-1. Navigate to the `frontend` directory.
-2. Launch a local web server:
-   ```bash
-   python -m http.server 3000
-   ```
-3. Open the dashboard at `http://localhost:3000`.
+```
+Prometheus / Loki / Grafana
+            ↓
+     🤖 AI Agents (Google ADK)
+   ┌───────────────┐
+   │ Monitor Agent │
+   └──────┬────────┘
+          ↓
+   ┌───────────────┐
+   │ Heal Agent    │
+   └──────┬────────┘
+          ↓
+   ┌───────────────┐
+   │ Validation    │
+   │ Agent         │
+   └───────────────┘
+            ↓
+   ArgoCD + LitmusChaos
+```
 
 ---
 
-## Dashboard Preview
+## 🔑 Key Features
 
-![Dashboard Overview](https://raw.githubusercontent.com/shaman177/hacktofuture4-A04/main/visuals/dashboard_demo.png)
-
-> **Deployment Note**: For a full system demonstration, use the **Spray Chaos (4x)** button in the Chaos Management tab to observe the parallel remediation workflow.
+* 🤖 **Agentic AI Workflow** (3 autonomous agents)
+* 📊 **Real-time anomaly detection** using Prometheus
+* 🔁 **Auto-remediation** via ArgoCD (rollback/sync)
+* 🧪 **Chaos validation** using LitmusChaos
+* ⚡ **Quota-aware LLM system** (handles API limits intelligently)
+* 📡 **Streaming + API-based monitoring**
+* 🧠 Smart decision-making using Gemini models
 
 ---
-**TEAM INVOX** | HackToFuture 4
+
+## 🛠️ Tech Stack
+
+* **Backend:** FastAPI 
+* **AI Framework:** Google ADK (Agent Development Kit) 
+* **LLM:** Gemini (gemini-flash-latest)
+* **Monitoring:** Prometheus
+* **Logging:** Loki
+* **Visualization:** Grafana
+* **Deployment:** ArgoCD
+* **Chaos Testing:** LitmusChaos
+* **Language:** Python
+
+---
+
+## ⚙️ How It Works
+
+1. Monitor Agent scans cluster using Prometheus
+2. If anomalies found → classify severity
+3. Heal Agent performs:
+
+   * 🔄 Rollback
+   * 🔁 Sync
+4. Validation Agent:
+
+   * Injects chaos
+   * Verifies resilience
+
+System automatically stops if cluster is healthy → saves API quota 
+
+---
+
+## ⚙️ How to Run
+
+```bash
+# Clone repo
+git clone https://github.com/<your-team>/hacktofuture4-<team_id>.git
+
+cd project
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run server
+python main.py
+```
+
+Server runs on:
+
+```
+http://localhost:8000
+```
+
+---
+
+## 🔌 API Endpoints
+
+* `GET /health` → System status
+* `POST /trigger` → Run full healing workflow
+* `GET /logs` → Workflow history
+* `POST /agent/query` → Query specific agent
+* `POST /metrics/query` → Direct Prometheus query (no LLM usage)
+* `POST /chaos/inject` → Inject failure
+
+---
+
+## ⚡ Smart Optimization
+
+* ⏱️ Rate-limited LLM calls (4s gap)
+* 🔁 Retry + circuit breaker for API limits
+* 📉 Minimizes LLM usage (max ~6 calls/workflow)
+* 💡 Uses tools instead of LLM where possible
+
+This ensures smooth operation even on **free-tier APIs** 
+
+---
+
+## 🚀 Future Improvements
+
+* 🌐 Frontend dashboard (real-time visualization)
+* ☁️ Cloud deployment (AWS/GCP)
+* 📈 Predictive failure detection
+* 🤖 Multi-cluster support
+* 🔐 RBAC + production safety layers
+
+---
+
+## 🏁 Conclusion
+
+This project demonstrates how **Agentic AI can transform DevOps**
+from reactive monitoring → to **fully autonomous self-healing systems**.
+
+---
+
